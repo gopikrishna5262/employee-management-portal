@@ -1,0 +1,11 @@
+CREATE TABLE employee (
+  id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+  first_name    VARCHAR(100) NOT NULL,
+  last_name     VARCHAR(100) NOT NULL,
+  email         VARCHAR(150) NOT NULL UNIQUE,
+  department    VARCHAR(100),
+  designation   VARCHAR(100),
+  salary        DECIMAL(12,2),
+  created_date  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_date  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
