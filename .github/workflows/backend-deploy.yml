@@ -3,10 +3,13 @@ name: Build and Deploy Backend
 on:
   push:
     branches:
-      - main
+      - develop
+
+  workflow_dispatch:
 
 jobs:
-  build-deploy:
+
+  build:
 
     runs-on: ubuntu-latest
 
@@ -16,44 +19,17 @@ jobs:
 
     steps:
 
-      - name: Checkout Source
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: corretto
           java-version: '17'
 
+      - name: Make Maven Wrapper Executable
+        run: chmod +x mvnw
+
       - name: Build WAR
-        run: mvn clean package -DskipTests
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Upload WAR to S3
-        run: |
-          aws s3 cp target/backend-0.0.1-SNAPSHOT.war \
-          s3://${{ secrets.S3_BUCKET }}/backend.war
-
-      - name: Deploy to EC2 using SSM
-        run: |
-          COMMAND_ID=$(aws ssm send-command \
-          --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
-          --document-name "AWS-RunShellScript" \
-          --parameters commands="sudo /opt/scripts/deploy.sh" \
-          --query "Command.CommandId" \
-          --output text)
-
-          echo "Command ID: $COMMAND_ID"
-
-          aws ssm wait command-executed \
-          --command-id $COMMAND_ID \
-          --instance-id "${{ secrets.EC2_INSTANCE_ID }}"
-
-      - name: Deployment Completed
-        run: echo "Deployment Successful"
+        run: ./mvnw clean package -DskipTests
