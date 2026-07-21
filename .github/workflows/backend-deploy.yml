@@ -39,6 +39,7 @@ jobs:
         run: |
           aws s3 cp target/backend-0.0.1-SNAPSHOT.war \
           s3://${{ secrets.S3_BUCKET }}/backend.war
+          
       - name: Deploy to EC2 using SSM
         run: |
           COMMAND_ID=$(aws ssm send-command \
@@ -51,5 +52,7 @@ jobs:
           aws ssm wait command-executed \
           --command-id $COMMAND_ID \
           --instance-id "${{ secrets.EC2_INSTANCE_ID }}"
+
+        
       - name: Deployment Completed
         run: echo "Deployment Successful"
