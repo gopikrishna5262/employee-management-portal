@@ -31,3 +31,26 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Maven
+target/
+
+# IntelliJ
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+
+# Terraform troubleshooting
+infrastructure/terraform/envs/dev/console.log
+infrastructure/terraform/envs/dev/console-output.json
