@@ -3,12 +3,12 @@ set -e
 dnf install -y java-17-amazon-corretto amazon-cloudwatch-agent
 
 # Install Tomcat 10
-useradd -m -d /opt/tomcat tomcat || true
+useradd -r -s /sbin/nologin tomcat || true
 cd /opt
-curl -O https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.24/bin/apache-tomcat-10.1.24.tar.gz
-tar xzf apache-tomcat-10.1.24.tar.gz
-ln -s apache-tomcat-10.1.24 tomcat
-chown -R tomcat:tomcat /opt/tomcat* /opt/apache-tomcat-10.1.24
+curl -fSL -O https://archive.apache.org/dist/tomcat/tomcat-10/v10.1.57/bin/apache-tomcat-10.1.57.tar.gz
+tar xzf apache-tomcat-10.1.57.tar.gz
+ln -sfn /opt/apache-tomcat-10.1.57 /opt/tomcat
+chown -R tomcat:tomcat /opt/tomcat* /opt/apache-tomcat-10.1.57
 
 cat >/etc/systemd/system/tomcat.service <<'EOF'
 [Unit]

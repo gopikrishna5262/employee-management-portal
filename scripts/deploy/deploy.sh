@@ -1,25 +1,65 @@
 #!/bin/bash
-set -euo pipefail
-ENV=$1
+set -e
 
-# Single instance per environment — find it by its Name tag instead of an ASG
-ID=$(aws ec2 describe-instances \
-  --filters "Name=tag:Name,Values=${ENV}-app" "Name=instance-state-name,Values=running" \
-  --query "Reservations[0].Instances[0].InstanceId" --output text)
+ARTIFACT_BUCKET="dev-empportal-artifacts-360131674413"
+WAR_NAME="backend.war"
+TOMCAT_HOME="/opt/tomcat"
 
-WAR_FILE=$(ls application/backend/target/*.war)
+# Your secret name in Secrets Manager
+SECRET_NAME="dev/empportal/db"
 
-echo "Deploying to $ID"
-aws ssm send-command \
-  --instance-ids "$ID" \
-  --document-name "AWS-RunShellScript" \
-  --comment "Deploy ${ENV}" \
-  --parameters commands="[
-    'sudo systemctl stop tomcat',
-    'sudo cp /opt/tomcat/webapps/ROOT.war /opt/tomcat/webapps/ROOT.war.bak || true',
-    'aws s3 cp s3://empportal-artifacts-<yourid>/${ENV}/$(basename $WAR_FILE) /opt/tomcat/webapps/ROOT.war',
-    'sudo systemctl start tomcat',
-    'sleep 15',
-    'curl -f http://localhost:8080/actuator/health || (sudo cp /opt/tomcat/webapps/ROOT.war.bak /opt/tomcat/webapps/ROOT.war && sudo systemctl restart tomcat && exit 1)'
-  ]" \
-  --output text
+echo "======================================"
+echo "Fetching database secret..."
+echo "======================================"
+
+SECRET=$(aws secretsmanager get-secret-value \
+  --secret-id ${SECRET_NAME} \
+  --query SecretString \
+  --output text)
+
+HOST=$(echo "$SECRET" | jq -r .host)
+PORT=$(echo "$SECRET" | jq -r .port)
+DB=$(echo "$SECRET" | jq -r .dbname)
+USER=$(echo "$SECRET" | jq -r .username)
+PASS=$(echo "$SECRET" | jq -r .password)
+
+echo "Generating Tomcat environment..."
+
+cat > ${TOMCAT_HOME}/bin/setenv.sh <<EOF
+#!/bin/bash
+export SPRING_DATASOURCE_URL=jdbc:mysql://$HOST:$PORT/$DB
+export SPRING_DATASOURCE_USERNAME=$USER
+export SPRING_DATASOURCE_PASSWORD=$PASS
+EOF
+
+chmod +x ${TOMCAT_HOME}/bin/setenv.sh
+chown tomcat:tomcat ${TOMCAT_HOME}/bin/setenv.sh
+
+echo "======================================"
+echo "Downloading latest artifact..."
+echo "======================================"
+
+aws s3 cp s3://${ARTIFACT_BUCKET}/${WAR_NAME} /tmp/${WAR_NAME}
+
+echo "Stopping Tomcat..."
+systemctl stop tomcat
+
+echo "Removing old deployment..."
+rm -rf ${TOMCAT_HOME}/webapps/backend
+rm -f ${TOMCAT_HOME}/webapps/backend.war
+
+echo "Deploying new WAR..."
+cp /tmp/${WAR_NAME} ${TOMCAT_HOME}/webapps/
+
+echo "Starting Tomcat..."
+systemctl start tomcat
+
+echo "Waiting for application..."
+sleep 30
+
+echo "Checking application health..."
+
+curl -f http://localhost:8080/backend/actuator/health
+
+echo
+echo "Deployment completed successfully."

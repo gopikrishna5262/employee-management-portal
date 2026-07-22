@@ -37,3 +37,38 @@ resource "aws_iam_instance_profile" "app" {
   name = "${var.environment}-app-profile"
   role = aws_iam_role.app.name
 }
+
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role_policy" "artifacts" {
+  name = "${var.environment}-artifacts-read"
+  role = aws_iam_role.app.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Sid    = "ListArtifactsBucket"
+        Effect = "Allow"
+
+        Action = [
+          "s3:ListBucket"
+        ]
+
+        Resource = var.artifacts_bucket_arn
+      },
+      {
+        Sid    = "ReadArtifacts"
+        Effect = "Allow"
+
+        Action = [
+          "s3:GetObject"
+        ]
+
+        Resource = "${var.artifacts_bucket_arn}/*"
+      }
+    ]
+  })
+}

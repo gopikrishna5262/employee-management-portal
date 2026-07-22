@@ -21,3 +21,9 @@ variable "instance_type" {
 variable "db_secret_arn" {
   type = string
 }
+
+variable "artifacts_bucket_arn" {
+  description = "ARN of the S3 artifacts bucket"
+  type = string
+}
+
